@@ -2,47 +2,49 @@
 % Dans une salle, individus Calmes vs individus Paniqués
 
 %% Paramètres des équations :
-D = 0.5; % coeficient de diffusion
-cp = 0.1; % coeficient de panique
+D = 0.2;    % coeficient de diffusion
+cp = 0.01; % coeficient de diffusion de la panique
+vp=1.5;     % vitesse d'un individu paniqué (m/s)
+vc=1;       % vitesse d'un individu calme (m/s)
 
 %% Paramètre spatiaux
-l=210;  % longueur salle
-L=80;   % Largeur salle 
+l=210;      % longueur salle (m)
+L=80;       % Largeur salle (m)
+xPorte=l/2; % Position de la porte
+yPorte=0;
+lPorte=4;   % longueur de la porte (m)
 
 %% Discretisation spatial
-h=1;    % pas spatial
+h=1;            % pas spatial
 Nl=round(l/h);
 NL=round(L/h);
-Xi=0:h:l;
-Yi=0:h:L;
-
 
 %% Discretisation temporelle
-t0=0;
-tf=50;
-t=t0;
-dt=0.1;
+t0=0;      % temps initial (s)
+tf=20;     % temps final (s)
+t=t0;      % temps courant (s)
+dt=0.1;    % pas de temps (s)
 
 %% Distribution des individus
 % p=0 si calme ; p=1 si paniqué
-N=1700; % population totale
-P0=100; % nb d'individus paniqués
-p=false(1,N); % distribution du carractère panique dans la population
+N=1700;         % population totale
+P0=100;         % nb d'individus paniqués
+p=false(1,N);   % distribution du carractère panique dans la population
 p(1:P0)=true;
-x=l*rand([N,1]); % répartition spatiale des individus
+x=l*rand([N,1]);% répartition spatiale des individus
 y=L*rand([N,1]);
-w=zeros(1,N) % probabilité de paniquer
+w=zeros(1,N);   % probabilité de paniquer
 
 %% Boucle Principale
-figure(1); clf;
-plot(x(p),y(p),'r.',x(~p),y(~p),'b.')
-
 tic
 while t<tf
     drawnow;
     
+    % MAJ densité
+    
     % Diffusion du carractère de panique
-    w=dt*cp*(1-p);
+    % influencée par densité avoisinante
+    w=dt*cp*(~p);
     irep=find(rand(1,N)<w);
     for i=1:length(irep)
         [~,rempl] = min((x - x(irep(i))).^2 ...
@@ -51,14 +53,18 @@ while t<tf
         p(rempl) = true;
     end
     
-    % Déplacement aléatoire des individus
-    x=x+sqrt(dt)*sqrt(2*D)*randn(size(x));
+    % Déplacement des individus
+    % vitesse diminuée en fonction de la densité
+    x=x + (xPorte-x)*dt.*(transpose(p)*(dt*vp-dt*vc)+dt*vc) ...
+        + randn(size(x))*sqrt(2*D*dt);
     x=abs(x);
-    y=y+sqrt(dt)*sqrt(2*D)*randn(size(y));
+    y=y + (yPorte-y)*dt.*(transpose(p)*(dt*vp-dt*vc)+dt*vc) ...
+        + randn(size(y))*sqrt(2*D*dt) ;
     y=abs(y);
     
     % Affichage
-    plot(x(p),y(p),'r.',x(~p),y(~p),'b.')    
+    plot(x(p),y(p),'r.',x(~p),y(~p),'b.')
+    line([xPorte-lPorte/2 xPorte+lPorte/2],[yPorte yPorte],'Color','green')
     axis([0,l,0,L]);
     t=t+dt;
 end
