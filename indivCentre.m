@@ -1,9 +1,10 @@
 % MODELE INDIVIDU-CENTRE
-% Dans une salle, individus Calmes vs individus Paniqués
+% Evacuation d'une salle avec des individus calmes, paniqués et appeurés
 clear all; close all;
+
 %% Paramètres des équations :
 D = 0.2;    % coeficient de diffusion
-cp = 0.01; % coeficient de diffusion de la panique
+cp= 0.5;
 vp=1.5;     % vitesse d'un individu paniqué (m/s)
 vc=1;       % vitesse d'un individu calme (m/s)
 
@@ -16,19 +17,17 @@ lPorte=4;   % longueur de la porte (m)
 
 %% Discretisation spatial
 h=1;            % pas spatial
-Nl=round(l/h);
-NL=round(L/h);
 
 %% Discretisation temporelle
 t0=0;      % temps initial (s)
-tf=50;     % temps final (s)
+tf=100;     % temps final (s)
 t=t0;      % temps courant (s)
 dt=0.1;    % pas de temps (s)
 
 %% Distribution des individus
 % p=0 si calme ; p=1 si paniqué
-N=500;         % population totale
-P0=100;         % nb d'individus paniqués
+N=1700;         % population totale
+P0=200;         % nb d'individus paniqués
 p=false(1,N);   % distribution du carractère panique dans la population
 p(1:P0)=true;
 x=l*rand([N,1]);% répartition spatiale des individus
@@ -37,6 +36,12 @@ w=zeros(1,N);   % probabilité de paniquer
 Densite = N/(l*L);
 
 %% Boucle Principale
+% Affichage
+figure(1);
+plot(x(p),y(p),'r.',x(~p),y(~p),'b.');
+line([xPorte-lPorte/2 xPorte+lPorte/2],[yPorte yPorte],'Color','green')
+axis([0,l,0,L]);
+    
 
 tic
 while t<tf
@@ -55,17 +60,20 @@ while t<tf
     
     % Déplacement des individus
     % vitesse diminuée en fonction de la densité
-    x=x + (xPorte-x)*dt.*(transpose(p)*(dt*(vp-Densite*vp/3)-dt*(vc-Densite*vc/3))+dt*(vc-Densite*vp/3)) ...
+    T=transpose(p);
+    x= x + (xPorte-x)*dt.*(T*(dt*(vp-Densite*vp/3)-dt*(vc-Densite*vc/3))+dt*(vc-Densite*vp/3)) ...
         + randn(size(x))*sqrt(2*D*dt);
-    x=abs(x);
-    y=y + (yPorte-y)*dt.*(transpose(p)*(dt*(vp-Densite*vp/3)-dt*(vc-Densite*vc/3))+dt*(vc-Densite*vp/3)) ...
+   
+    y= y + (yPorte-y)*dt.*(T*(dt*(vp-Densite*vp/3)-dt*(vc-Densite*vc/3))+dt*(vc-Densite*vp/3)) ...
         + randn(size(y))*sqrt(2*D*dt);
+    
+    x=abs(x);
     y=abs(y);
     
     % Sortie des individus
     j=1;
     while j<length(x)
-        if (y(j)<=(yPorte+1) && x(j)<=(xPorte+lPorte/2) && x(j)>=(xPorte-lPorte/2))
+        if (y(j)<=(yPorte+0.5) && x(j)<=(xPorte+lPorte/2) && x(j)>=(xPorte-lPorte/2))
             x(j)=[];
             p(j)=[];
             y(j)=[];
@@ -83,6 +91,5 @@ while t<tf
     axis([0,l,0,L]);
     
     t=t+dt;
-    N
 end
 toc
