@@ -12,13 +12,14 @@ D = 0.05;    % coeficient de diffusion
 Dmax = 3;   % densité max acceptable pour individus immobiles dans une foule (RATP)
 vp=1.5;     % vitesse d'un individu paniqué (m/s)
 vc=1;       % vitesse d'un individu calme (m/s)
+diff=0.5; % différence densités
 
 % Diffusion de la panique
-a1 =0.5;       % proportion d'individus calmes qui deviennent apeurés
+a1 =0.2;       % proportion d'individus calmes qui deviennent apeurés
 a2 =0.01;      % proportion d'individus apeurés qui se calment
-b1 =0.01;      % taux de contamination des gens apeurés par les gens paniqués pondéré plus bas par la densité
-b2 =0.5;       % proportion de personnes calmes qui deviennent apeurés
-c1 =0.05;       % proportion de personnes paniqués qui deviennent calmes
+b1 =0.1;       % taux de contamination des gens apeurés par les gens paniqués
+b2 =0.2;       % proportion de personnes calmes qui deviennent apeurés
+c1 =0.2;       % proportion de personnes paniqués qui deviennent calmes
 
 % Distribution des individus :
 N = 160;       % population totale
@@ -32,7 +33,7 @@ etat((X0+Y0+1):(X0+Y0+Z0),3)=true;
 
 %% Discretisation temporelle :
 t0 = 0;          % temps initial       
-tf = 150;         % temps final
+tf = 110;         % temps final
 dt = 0.08;       % pas de temps
 X = zeros(tf/dt,1);  
 Y = zeros(tf/dt,1);   
@@ -42,13 +43,23 @@ Z = zeros(tf/dt,1);
 h=1;        % pas spatial
 l=100;      % longueur salle (m)
 L=50;       % Largeur salle (m)
-xPorte=l/2; % Position de la porte
-yPorte=0;
-lPorte=4;   % longueur de la porte (m)
+
+xPorte1=l/2; % Position de la porte 1
+yPorte1=0;
+
+xPorte2=l; % Position de la porte 2
+yPorte2=L/2;
+
+lPorte=4;   % longueur de la porte  (m)
 position = [l*rand([N,1]),L*rand([N,1])]; % positionnement des individus dans la salle
+x=position(:,1);
+y=position(:,2);
+proche1 = sqrt((xPorte1-x).^2+(yPorte1-y).^2) < sqrt((xPorte2-x).^2+(yPorte2-y).^2);
+hasard = rand([N,1])<0.5;
 Densite = zeros(N,1);
 Densite(:,1) = N/(l*L);
-Dp=N/(l*L);
+Dp1=N/(l*L);
+Dp2=N/(l*L)+0.1;
 CalculDensite = zeros(N,3);
 c=0;
 nbOut=0;
@@ -67,8 +78,6 @@ Z(1,1)=Z0;
 %% Affichage Initial
 figure(2);
 %individus
-x=position(:,1);
-y=position(:,2);
 calme=etat(:,1);
 peur=etat(:,2);
 panique=etat(:,3);
@@ -78,11 +87,13 @@ line([0 l],[L L],'Color','black');
 line([0 l],[0 0],'Color','black');
 line([l l],[0 L],'Color','black');
 line([0 0],[0 L],'Color','black');
-% porte
-line([xPorte-lPorte/2 xPorte+lPorte/2],[yPorte yPorte],'Color',[0.5,0,0.5])
-line([xPorte-lPorte/2 xPorte+lPorte/2],[yPorte-0.5 yPorte-0.5],'Color',[0.5,0,0.5])
+% portes
+line([xPorte1-lPorte/2 xPorte1+lPorte/2],[yPorte1 yPorte1],'Color',[0.5,0,0.5])
+line([xPorte1-lPorte/2 xPorte1+lPorte/2],[yPorte1-0.5 yPorte1-0.5],'Color',[0.5,0,0.5])
+line([xPorte2 xPorte2],[yPorte2-lPorte/2 yPorte2+lPorte/2],'Color',[0.5,0,0.5])
+line([xPorte2-0.5 xPorte2-0.5],[yPorte2-lPorte/2 yPorte2+lPorte/2],'Color',[0.5,0,0.5])
 axis([-5,l+5,-5,L+5])
-    
+
 %% Boucle principale
 tic
 while ti<tf
@@ -94,8 +105,8 @@ while ti<tf
     
     % Schéma explicite pour les différents groupes
     X(i+1)= X(i) + dt*(-a1*X(i) + a2*Y(i) + c1*Z(i));
-    Y(i+1)= Y(i) + dt*(a1*X(i) - a2*Y(i) + b2*Z(i) -b1*Y(i)*Z(i)*Dp);
-    Z(i+1)= Z(i) + dt*(b1*Y(i)*Z(i)*Dp - b2*Z(i) - c1*Z(i));% Diffusion du carractère de panique
+    Y(i+1)= Y(i) + dt*(a1*X(i) - a2*Y(i) + b2*Z(i) -b1*Y(i)*Z(i));
+    Z(i+1)= Z(i) + dt*(b1*Y(i)*Z(i) - b2*Z(i) - c1*Z(i));% Diffusion du carractère de panique
     
     % Changement d'état des individus
     Yi=round(Y(i));
@@ -111,13 +122,18 @@ while ti<tf
     % Déplacement des individus -------------------------------------------
     
     % Sortie des individus ------------------------------------------------
-    Dp=1;
+    Dp1=1;
+    Dp2=1;
     j=1;
     while j<N+1
         if(etat(j,4))
             etat(j,:)=false;
             etat(j,4)=true;
-        elseif ((position(j,2)<=(yPorte+1)) && (position(j,1)<=(xPorte+lPorte/2)) && (position(j,1)>=(xPorte-lPorte/2)))
+        elseif ((position(j,2)<=(yPorte1+1)) && (position(j,1)<=(xPorte1+lPorte/2)) && (position(j,1)>=(xPorte1-lPorte/2)))
+            etat(j,:)=false;
+            etat(j,4)=true;
+            nbOut=nbOut+1; 
+        elseif ((position(j,2)<=(yPorte2+lPorte/2)) && (position(j,1)>=(xPorte2-1)) && (position(j,2)>=(yPorte2-lPorte/2)))
             etat(j,:)=false;
             etat(j,4)=true;
             nbOut=nbOut+1; 
@@ -140,26 +156,33 @@ while ti<tf
                 end
             end
         end
-        if ((position(k,2)<=(yPorte+4)) && (position(k,1)<=(xPorte+lPorte/2+4)) && (position(k,1)>=(xPorte-lPorte/2-4)))
-            Dp=Dp+1;
+        if ((position(k,2)<=(yPorte1+4)) && (position(k,1)<=(xPorte1+lPorte/2+4)) && (position(k,1)>=(xPorte1-lPorte/2-1)))
+            Dp1=Dp1+1;
+        elseif ((position(k,2)<=(yPorte2+lPorte/2+4)) && (position(k,1)>=(xPorte2-4)) && (position(k,2)>=(yPorte2-lPorte/2-4)))
+            Dp2=Dp2+1;
         end
+        
     end
-    Dp=Dp/(4*(lPorte+8));
+    Dp1=Dp1/(4*(lPorte+8));
+    Dp2=Dp2/(4*(lPorte+8));
     Densite = CalculDensite(:,3);
+    if(Zi==0 && Yi==0)
+        Dp1=Dp2;
+    end
     
-    % Individus paniqués
-    position(:,1) = x + (xPorte-x)*dt.*panique.*(dt*(vp-Densite.*(vp/Dmax))) + randn(size(x))*sqrt(D*dt);
-    position(:,2) = y + (yPorte-y)*dt.*panique.*(dt*(vp-Densite.*(vp/Dmax))) + randn(size(y))*sqrt(D*dt);
+    % Individus paniqués ==> prennent une porte au hasard
+    position(:,1) = x + (hasard).*(xPorte1-x)*dt.*panique.*(dt*(vp-Densite.*(vp/Dmax))) + (~hasard).*(xPorte2-x)*dt.*panique.*(dt*(vp-Densite.*(vp/Dmax))) + randn(size(x))*sqrt(D*dt);
+    position(:,2) = y + (hasard).*(yPorte1-y)*dt.*panique.*(dt*(vp-Densite.*(vp/Dmax))) + (~hasard).*(yPorte2-y)*dt.*panique.*(dt*(vp-Densite.*(vp/Dmax))) + randn(size(y))*sqrt(D*dt);
     x=abs(position(:,1));
     y=abs(position(:,2));
-    % Individus appeurés
-    position(:,1) = x + (xPorte-x)*dt.*peur.*(dt*(vp-Densite.*vp/Dmax));
-    position(:,2) = y + (yPorte-y)*dt.*peur.*(dt*(vp-Densite.*vp/Dmax));
+    % Individus appeurés ==> vont à la porte la plus proche
+    position(:,1) = x + proche1.*(xPorte1-x)*dt.*peur.*(dt*(vp-Densite.*vp/Dmax))+ (~proche1).*(xPorte2-x)*dt.*peur.*(dt*(vp-Densite.*vp/Dmax));
+    position(:,2) = y + proche1.*(yPorte1-y)*dt.*peur.*(dt*(vp-Densite.*vp/Dmax))+ (~proche1).*(yPorte2-y)*dt.*peur.*(dt*(vp-Densite.*vp/Dmax));
     x=abs(position(:,1));
     y=abs(position(:,2));
-    % Individus calmes
-    position(:,1) = x + (xPorte-x)*dt.*calme.*(dt*(vc-Densite.*vc/Dmax));
-    position(:,2) = y + (yPorte-y)*dt.*calme.*(dt*(vc-Densite.*vc/Dmax));
+    % Individus calmes ==> vont à la porte la - encombrée
+    position(:,1) = x + (Dp1>Dp2)*(abs(Dp2-Dp1)>diff)*(xPorte2-x)*dt.*calme.*(dt*(vc-Densite.*vc/Dmax)) + (Dp2>Dp1)*(abs(Dp2-Dp1)>diff)*(xPorte1-x)*dt.*calme.*(dt*(vp-Densite.*(vp/Dmax))) + (abs(Dp2-Dp1)<diff).*proche1.*(xPorte1-x)*dt.*calme.*(dt*(vp-Densite.*vp/Dmax))+ (abs(Dp2-Dp1)<diff).*(~proche1).*(xPorte2-x)*dt.*calme.*(dt*(vp-Densite.*vp/Dmax));
+    position(:,2) = y + (Dp1>Dp2)*(abs(Dp2-Dp1)>diff)*(yPorte2-y)*dt.*calme.*(dt*(vc-Densite.*vc/Dmax)) + (Dp2>Dp1)*(abs(Dp2-Dp1)>diff)*(yPorte1-y)*dt.*calme.*(dt*(vp-Densite.*(vp/Dmax))) + (abs(Dp2-Dp1)<diff).*proche1.*(yPorte1-y)*dt.*calme.*(dt*(vp-Densite.*vp/Dmax))+ (abs(Dp2-Dp1)<diff).*(~proche1).*(yPorte2-y)*dt.*calme.*(dt*(vp-Densite.*vp/Dmax));
     x=abs(position(:,1));
     y=abs(position(:,2));
     % Individus sortis
@@ -167,6 +190,7 @@ while ti<tf
     position(:,2) = y - sortis.*(y);
     x=abs(position(:,1));
     y=abs(position(:,2));
+    proche1 = sqrt((xPorte1-x).^2+(yPorte1-y).^2) < sqrt((xPorte2-x).^2+(yPorte2-y).^2);
     
     % Affichage -----------------------------------------------------------
     figure(4);
@@ -177,10 +201,12 @@ while ti<tf
     line([0 l],[0 0],'Color','black');
     line([l l],[0 L],'Color','black');
     line([0 0],[0 L],'Color','black');
-    % porte
-    line([xPorte-lPorte/2 xPorte+lPorte/2],[yPorte yPorte],'Color',[0.5,0,0.5])
-    line([xPorte-lPorte/2 xPorte+lPorte/2],[yPorte-0.5 yPorte-0.5],'Color',[0.5,0,0.5])
-    axis([-5,l+5,-5,L+5]);
+    % portes
+    line([xPorte1-lPorte/2 xPorte1+lPorte/2],[yPorte1 yPorte1],'Color',[0.5,0,0.5])
+    line([xPorte1-lPorte/2 xPorte1+lPorte/2],[yPorte1-0.5 yPorte1-0.5],'Color',[0.5,0,0.5])
+    line([xPorte2 xPorte2],[yPorte2-lPorte/2 yPorte2+lPorte/2],'Color',[0.5,0,0.5])
+    line([xPorte2-0.5 xPorte2-0.5],[yPorte2-lPorte/2 yPorte2+lPorte/2],'Color',[0.5,0,0.5])
+    axis([-5,l+5,-5,L+5])
     CalculDensite(:,3)=0;
     ti=ti+dt;
     i=i+1;
@@ -198,3 +224,5 @@ hold on;
 plot(temps,Z,'red');
 hl = legend(['Calmes ';'Peur   ';'Panique']);
 title('Evolution temporelle de la panique dans une population');    %% titre du graphe
+
+   

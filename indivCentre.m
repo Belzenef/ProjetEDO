@@ -26,8 +26,8 @@ dt=0.1;    % pas de temps (s)
 
 %% Distribution des individus
 % p=0 si calme ; p=1 si paniqué
-N=1700;         % population totale
-P0=200;         % nb d'individus paniqués
+N=170;         % population totale
+P0=20;         % nb d'individus paniqués
 p=false(1,N);   % distribution du carractère panique dans la population
 p(1:P0)=true;
 x=l*rand([N,1]);% répartition spatiale des individus
